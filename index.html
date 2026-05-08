@@ -490,22 +490,55 @@
       border: 0;
     }
 
-    @media (max-width: 420px) {
+    @media (max-width: 480px) {
       .app {
-        padding: 14px;
+        min-height: 100dvh;
+        height: 100dvh;
+        padding: 10px;
         align-items: start;
+        overflow: hidden;
       }
 
       .shell {
-        padding-top: 4px;
+        height: 100%;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        padding-top: 2px;
       }
 
       .topbar {
-        margin-bottom: 12px;
+        flex: 0 0 auto;
+        margin-bottom: 8px;
+      }
+
+      .close-dot {
+        width: 32px;
+        height: 32px;
+      }
+
+      .progress-wrap {
+        height: 10px;
       }
 
       .card {
-        padding: 20px 16px;
+        padding: 18px 14px;
+      }
+
+      #quizScreen.active {
+        min-height: 0;
+        flex: 1 1 auto;
+        display: flex;
+      }
+
+      #quizScreen .card {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding: 12px;
       }
 
       h1 {
@@ -517,7 +550,18 @@
       }
 
       .question h2 {
-        font-size: 22px;
+        font-size: 20px;
+        line-height: 1.22;
+      }
+
+      .quiz-head {
+        flex: 0 0 auto;
+        margin-bottom: 8px;
+        font-size: 12px;
+      }
+
+      .pill {
+        padding: 5px 8px;
       }
 
       .stats {
@@ -537,7 +581,12 @@
       }
 
       .question {
-        min-height: 84px;
+        flex: 0 1 auto;
+        min-height: 0;
+        max-height: 108px;
+        align-items: start;
+        margin-bottom: 10px;
+        overflow: auto;
       }
 
       .question-media {
@@ -545,8 +594,30 @@
       }
 
       .option {
-        min-height: 56px;
-        padding-left: 14px;
+        min-height: 46px;
+        padding: 9px 38px 9px 12px;
+        font-size: 14px;
+        box-shadow: 0 3px 0 #b6e3fb;
+      }
+
+      .option.correct {
+        box-shadow: 0 3px 0 #a9e7c4;
+      }
+
+      .option.wrong {
+        box-shadow: 0 3px 0 #bd2f2f;
+      }
+
+      .option .badge {
+        right: 10px;
+        width: 20px;
+        height: 20px;
+      }
+
+      .options {
+        flex: 0 0 auto;
+        gap: 8px;
+        margin-bottom: 8px;
       }
 
       .option.image-option {
@@ -560,6 +631,32 @@
       .intro-character {
         width: min(86vw, 300px);
         margin-top: 18px;
+      }
+
+      .feedback {
+        flex: 0 0 auto;
+        min-height: 0;
+        padding: 9px 10px;
+      }
+
+      .feedback-title {
+        margin-bottom: 3px;
+        font-size: 14px;
+      }
+
+      .feedback-copy {
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .footer {
+        flex: 0 0 auto;
+        margin-top: 8px;
+      }
+
+      .primary-btn,
+      .ghost-btn {
+        min-height: 46px;
       }
     }
 
@@ -878,9 +975,9 @@
                 "category": "고정",
                 "question": "리벳건으로 할 수 없는 일은?",
                 "options": [
-                      "덕트 설치 작업",
-                      "지붕 설치 작업",
                       "바닥 다듬기 작업",
+                      "지붕 설치 작업",
+                      "덕트설치 작업",
                       "높은 곳 작업 발판을 설치하는 작업"
                 ],
                 "answer": 0,
@@ -890,9 +987,9 @@
                 "category": "접착·마감",
                 "question": "용접시에 불똥을 막기 위한 장비는 무엇일까요?",
                 "options": [
-                      "아시바",
-                      "사게부리",
                       "버미글라스",
+                      "사게부리",
+                      "아시바",
                       "우마"
                 ],
                 "answer": 0,
@@ -914,9 +1011,9 @@
                 "category": "조각",
                 "question": "라우터는 언제 쓰는 공구일까요?",
                 "options": [
-                      "바닥을 평평하게 만드는 작업",
-                      "고압 탱크에 공기를 저장하는 작업",
                       "목재의 가장자리 다듬기, 홈 파기 등의 작업",
+                      "고압 탱크에 공기를 저장하는 작업",
+                      "바닥을 평평하게 만드는 작업",
                       "수동 지게차처럼 자재를 옮기는 작업"
                 ],
                 "answer": 0,
@@ -926,9 +1023,9 @@
                 "category": "파괴",
                 "question": "뿌레카의 정식 명칙은 뭘까요?",
                 "options": [
-                      "불도저",
-                      "믹싱드릴",
                       "해머드릴",
+                      "믹싱드릴",
+                      "불도저",
                       "작은 부품을 정밀 연마하는 도구"
                 ],
                 "answer": 0,
@@ -974,10 +1071,10 @@
                 "category": "용도 구분",
                 "question": "다음 중 용도가 다른 장비를 고르세요.",
                 "options": [
-                      "코끼리바이스",
+                      "샌더",
                       "만력기",
                       "앙카",
-                      "샌더"
+                      "코끼리바이스"
                 ],
                 "answer": 3,
                 "note": "코끼리바이스, 만력기, 앙카는 고정과 관련된 장비이고 샌더는 표면을 다듬는 마감 장비입니다!"
