@@ -459,8 +459,54 @@
       overflow: auto;
       display: grid;
       gap: 8px;
-      margin: 18px 0 2px;
+      margin: 12px 0 2px;
       padding-right: 4px;
+    }
+
+    .review-toggle {
+      margin: 18px 0 2px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #f7fbff;
+      overflow: hidden;
+    }
+
+    .review-toggle summary {
+      min-height: 54px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 950;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .review-toggle summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .review-toggle summary::after {
+      content: "펼치기";
+      color: var(--primary);
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .review-toggle[open] summary {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .review-toggle[open] summary::after {
+      content: "접기";
+    }
+
+    .review-toggle .review {
+      padding: 12px;
     }
 
     .review-item {
@@ -501,23 +547,23 @@
     @media (max-width: 480px) {
       .app {
         min-height: 100dvh;
-        height: 100dvh;
         padding: 10px;
-        align-items: start;
-        overflow: hidden;
+        place-items: start center;
       }
 
       .shell {
-        height: 100%;
         min-height: 0;
-        display: flex;
-        flex-direction: column;
         padding-top: 2px;
       }
 
       .topbar {
-        flex: 0 0 auto;
+        position: sticky;
+        top: 8px;
+        z-index: 10;
         margin-bottom: 8px;
+        padding: 4px 0;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 255, 0.88));
+        backdrop-filter: blur(8px);
       }
 
       .close-dot {
@@ -534,19 +580,7 @@
       }
 
       #quizScreen.active {
-        min-height: 0;
-        flex: 1 1 auto;
-        display: flex;
-      }
-
-      #quizScreen .card {
-        width: 100%;
-        height: 100%;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        padding: 12px;
+        display: block;
       }
 
       h1 {
@@ -589,12 +623,9 @@
       }
 
       .question {
-        flex: 0 1 auto;
         min-height: 0;
-        max-height: 108px;
         align-items: start;
         margin-bottom: 10px;
-        overflow: auto;
       }
 
       .question-media {
@@ -623,7 +654,6 @@
       }
 
       .options {
-        flex: 0 0 auto;
         gap: 8px;
         margin-bottom: 8px;
       }
@@ -642,7 +672,6 @@
       }
 
       .feedback {
-        flex: 0 0 auto;
         min-height: 0;
         padding: 9px 10px;
       }
@@ -658,13 +687,73 @@
       }
 
       .footer {
-        flex: 0 0 auto;
         margin-top: 8px;
+      }
+
+      #quizScreen .footer {
+        position: sticky;
+        bottom: 8px;
+        z-index: 8;
+        padding-top: 8px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0), var(--surface) 34%);
       }
 
       .primary-btn,
       .ghost-btn {
         min-height: 46px;
+      }
+
+      .result-badge {
+        width: min(42vw, 150px);
+        margin-bottom: 12px;
+      }
+
+      .result-score {
+        margin-bottom: 14px;
+      }
+
+      .result-score h2 {
+        font-size: 23px;
+      }
+
+      .result-score p {
+        font-size: 14px;
+      }
+
+      #resultScreen .stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin: 14px 0;
+      }
+
+      #resultScreen .stat {
+        min-height: 64px;
+        padding: 9px 6px;
+        display: block;
+        text-align: center;
+      }
+
+      #resultScreen .stat strong {
+        font-size: clamp(16px, 4.8vw, 22px);
+      }
+
+      #resultScreen .footer {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .review-toggle {
+        margin-top: 14px;
+      }
+
+      .review-toggle summary {
+        min-height: 48px;
+        padding: 0 12px;
+        font-size: 14px;
+      }
+
+      .review {
+        max-height: min(44dvh, 260px);
       }
     }
 
@@ -738,7 +827,10 @@
             <div class="stat"><strong id="accuracyStat">0%</strong><span>정답률</span></div>
             <div class="stat"><strong id="gradeStat">입문</strong><span>등급</span></div>
           </div>
-          <div class="review" id="reviewList" aria-label="문제 풀이 요약"></div>
+          <details class="review-toggle" id="reviewToggle">
+            <summary>정답/오답 풀이</summary>
+            <div class="review" id="reviewList" aria-label="문제 풀이 요약"></div>
+          </details>
           <div class="footer">
             <button class="primary-btn" type="button" id="retryButton">다시 풀기</button>
             <button class="ghost-btn" type="button" id="eventButton">이벤트 참여</button>
@@ -1113,6 +1205,7 @@
     const scoreStat = document.querySelector("#scoreStat");
     const accuracyStat = document.querySelector("#accuracyStat");
     const gradeStat = document.querySelector("#gradeStat");
+    const reviewToggle = document.querySelector("#reviewToggle");
     const reviewList = document.querySelector("#reviewList");
     // GA4 웹 스트림 Measurement ID로 교체하면 이벤트 전송이 활성화됩니다.
     const GA_MEASUREMENT_ID = "G-FLPSVGVMWQ";
@@ -1484,6 +1577,7 @@
       scoreStat.textContent = `${score}/${questions.length}`;
       accuracyStat.textContent = `${accuracy}%`;
       gradeStat.textContent = grade.label;
+      reviewToggle.open = false;
       reviewList.innerHTML = "";
 
       answers.forEach((item, index) => {
@@ -1552,6 +1646,15 @@
       });
       eventButton.textContent = "참여 완료";
       eventButton.disabled = true;
+    });
+    reviewToggle.addEventListener("toggle", () => {
+      if (!resultScreen.classList.contains("active")) return;
+      trackEvent("result_review_toggle", {
+        toggle_state: reviewToggle.open ? "open" : "closed",
+        score,
+        total_questions: questions.length,
+        grade_label: gradeStat.textContent
+      });
     });
 
     window.addEventListener("pagehide", () => {
