@@ -1114,6 +1114,9 @@
     const accuracyStat = document.querySelector("#accuracyStat");
     const gradeStat = document.querySelector("#gradeStat");
     const reviewList = document.querySelector("#reviewList");
+    // GA4 웹 스트림 Measurement ID로 교체하면 이벤트 전송이 활성화됩니다.
+    const GA_MEASUREMENT_ID = "G-XXXXXXXXXX";
+    const GA_ENABLED = /^G-[A-Z0-9]+$/.test(GA_MEASUREMENT_ID) && GA_MEASUREMENT_ID !== "G-XXXXXXXXXX";
 
     let currentIndex = 0;
     let score = 0;
@@ -1121,6 +1124,71 @@
     let answered = false;
     let answers = [];
     let questions = [];
+    let quizRunId = "";
+    let quizAttempt = 0;
+    let quizCompleted = false;
+
+    function getAnonymousId(key) {
+      const storage = key === "gada_quiz_visitor_id" ? localStorage : sessionStorage;
+      let value = storage.getItem(key);
+      if (!value) {
+        value = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        storage.setItem(key, value);
+      }
+      return value;
+    }
+
+    function getTrafficParams() {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        utm_source: params.get("utm_source") || "",
+        utm_medium: params.get("utm_medium") || "",
+        utm_campaign: params.get("utm_campaign") || "",
+        utm_content: params.get("utm_content") || "",
+        utm_term: params.get("utm_term") || "",
+        referrer_host: document.referrer ? new URL(document.referrer).host : "",
+        landing_path: window.location.pathname
+      };
+    }
+
+    function initAnalytics() {
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function gtag() {
+        window.dataLayer.push(arguments);
+      };
+
+      if (!GA_ENABLED) return;
+
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+      document.head.appendChild(script);
+      window.gtag("js", new Date());
+      window.gtag("config", GA_MEASUREMENT_ID, {
+        send_page_view: true,
+        page_title: "가다위키 건설 현장 용어 퀴즈"
+      });
+    }
+
+    function trackEvent(name, params = {}) {
+      const payload = {
+        quiz_session_id: getAnonymousId("gada_quiz_session_id"),
+        quiz_visitor_id: getAnonymousId("gada_quiz_visitor_id"),
+        quiz_run_id: quizRunId,
+        ...getTrafficParams(),
+        ...params
+      };
+
+      if (GA_ENABLED) {
+        window.gtag("event", name, payload);
+      }
+      window.gadaLastAnalyticsEvent = { name, params: payload };
+    }
+
+    function questionId(item) {
+      const bankIndex = questionBank.indexOf(item);
+      return bankIndex >= 0 ? `q_${bankIndex + 1}` : "q_unknown";
+    }
 
     function showScreen(screen) {
       [introScreen, quizScreen, resultScreen].forEach((item) => item.classList.remove("active"));
@@ -1153,13 +1221,22 @@
       return typeof option === "string" ? option : option.label;
     }
 
-    function startQuiz() {
+    function startQuiz(source = "start") {
       questions = shuffleArray(questionBank).slice(0, QUESTION_COUNT);
+      quizAttempt += 1;
+      quizRunId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
       currentIndex = 0;
       score = 0;
       selectedIndex = null;
       answered = false;
       answers = [];
+      quizCompleted = false;
+      trackEvent("quiz_start", {
+        start_source: source,
+        attempt_number: quizAttempt,
+        question_count: QUESTION_COUNT,
+        question_bank_size: questionBank.length
+      });
       showScreen(quizScreen);
       renderQuestion();
     }
@@ -1204,6 +1281,12 @@
       });
 
       updateProgress();
+      trackEvent("quiz_question_view", {
+        question_id: questionId(item),
+        question_category: item.category,
+        question_order: currentIndex + 1,
+        question_count: questions.length
+      });
     }
 
     function selectOption(button, item) {
@@ -1229,12 +1312,23 @@
         answered = true;
         const isCorrect = selectedIndex === item.answer;
         if (isCorrect) score += 1;
+        const currentScore = score;
 
         answers.push({
           question: item.question,
           correct: isCorrect,
           selected: optionLabel(item.options[selectedIndex]),
           answer: optionLabel(item.options[item.answer])
+        });
+
+        trackEvent("quiz_answer_select", {
+          question_id: questionId(item),
+          question_category: item.category,
+          question_order: currentIndex + 1,
+          selected_option_number: selectedIndex + 1,
+          correct_option_number: item.answer + 1,
+          is_correct: isCorrect ? "true" : "false",
+          current_score: currentScore
         });
 
         document.querySelectorAll(".option").forEach((button) => {
@@ -1263,6 +1357,11 @@
       }
 
       if (currentIndex < questions.length - 1) {
+        trackEvent("quiz_next_click", {
+          question_order: currentIndex + 1,
+          next_question_order: currentIndex + 2,
+          current_score: score
+        });
         currentIndex += 1;
         renderQuestion();
       } else {
@@ -1313,6 +1412,13 @@
     function showResult() {
       const accuracy = Math.round((score / questions.length) * 100);
       const grade = getGrade(score);
+      quizCompleted = true;
+      trackEvent("quiz_complete", {
+        score,
+        total_questions: questions.length,
+        accuracy,
+        grade_label: grade.label
+      });
 
       showScreen(resultScreen);
       progress.style.width = "100%";
@@ -1333,16 +1439,49 @@
       });
     }
 
-    startButton.addEventListener("click", startQuiz);
-    retryButton.addEventListener("click", startQuiz);
+    initAnalytics();
+    trackEvent("quiz_landing_view", {
+      question_bank_size: questionBank.length,
+      question_count: QUESTION_COUNT
+    });
+
+    startButton.addEventListener("click", () => startQuiz("intro_start"));
+    retryButton.addEventListener("click", () => {
+      trackEvent("quiz_retry_click", {
+        previous_score: score,
+        previous_total_questions: questions.length
+      });
+      startQuiz("retry");
+    });
     nextButton.addEventListener("click", submitAnswer);
     homeButton.addEventListener("click", () => {
+      trackEvent("quiz_home_click", {
+        screen: quizScreen.classList.contains("active") ? "quiz" : resultScreen.classList.contains("active") ? "result" : "intro",
+        question_order: currentIndex + 1,
+        current_score: score
+      });
       showScreen(introScreen);
       updateProgress();
     });
     eventButton.addEventListener("click", () => {
+      trackEvent("result_cta_click", {
+        cta_name: "event_participation",
+        score,
+        total_questions: questions.length,
+        grade_label: gradeStat.textContent
+      });
       eventButton.textContent = "참여 완료";
       eventButton.disabled = true;
+    });
+
+    window.addEventListener("pagehide", () => {
+      if (!quizCompleted && questions.length > 0 && quizScreen.classList.contains("active")) {
+        trackEvent("quiz_abandon", {
+          question_order: currentIndex + 1,
+          answered_count: answers.length,
+          current_score: score
+        });
+      }
     });
   </script>
 </body>
