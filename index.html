@@ -1182,7 +1182,48 @@
       if (GA_ENABLED) {
         window.gtag("event", name, payload);
       }
+      window.gadaAnalyticsEvents = window.gadaAnalyticsEvents || [];
+      window.gadaAnalyticsEvents.push({ name, params: payload });
       window.gadaLastAnalyticsEvent = { name, params: payload };
+    }
+
+    function currentScreenName() {
+      if (quizScreen.classList.contains("active")) return "quiz";
+      if (resultScreen.classList.contains("active")) return "result";
+      return "intro";
+    }
+
+    function trackButtonClick(buttonName, params = {}) {
+      trackEvent("button_click", {
+        button_name: buttonName,
+        screen_name: currentScreenName(),
+        question_order: questions.length ? currentIndex + 1 : 0,
+        current_score: score,
+        ...params
+      });
+    }
+
+    function setVirtualPage(screenName, mode = "push") {
+      const url = new URL(window.location.href);
+      url.hash = screenName === "intro" ? "" : screenName;
+      const method = mode === "replace" ? "replaceState" : "pushState";
+      window.history[method]({ screenName }, "", url);
+
+      const normalizedPath = window.location.pathname.replace(/\/$/, "");
+      const virtualPath = screenName === "intro"
+        ? window.location.pathname
+        : `${normalizedPath || ""}/${screenName}`;
+      const payload = {
+        page_title: `가다위키 퀴즈 - ${screenName}`,
+        page_location: window.location.href,
+        page_path: virtualPath,
+        screen_name: screenName
+      };
+
+      if (GA_ENABLED) {
+        window.gtag("event", "page_view", payload);
+      }
+      window.gadaLastPageView = payload;
     }
 
     function questionId(item) {
@@ -1237,6 +1278,7 @@
         question_count: QUESTION_COUNT,
         question_bank_size: questionBank.length
       });
+      setVirtualPage("quiz", "push");
       showScreen(quizScreen);
       renderQuestion();
     }
@@ -1300,6 +1342,11 @@
       selectedIndex = Number(button.dataset.index);
       button.classList.add("selected");
       nextButton.disabled = false;
+      trackButtonClick("answer_option", {
+        selected_option_number: selectedIndex + 1,
+        question_id: questionId(item),
+        question_category: item.category
+      });
       submitAnswer();
     }
 
@@ -1413,11 +1460,19 @@
       const accuracy = Math.round((score / questions.length) * 100);
       const grade = getGrade(score);
       quizCompleted = true;
+      setVirtualPage("result", "push");
       trackEvent("quiz_complete", {
         score,
         total_questions: questions.length,
         accuracy,
         grade_label: grade.label
+      });
+      trackEvent("result_page_view", {
+        score,
+        total_questions: questions.length,
+        accuracy,
+        grade_label: grade.label,
+        result_url: window.location.href
       });
 
       showScreen(resultScreen);
@@ -1445,25 +1500,50 @@
       question_count: QUESTION_COUNT
     });
 
-    startButton.addEventListener("click", () => startQuiz("intro_start"));
+    startButton.addEventListener("click", () => {
+      trackButtonClick("start_quiz", {
+        button_text: startButton.textContent.trim()
+      });
+      startQuiz("intro_start");
+    });
     retryButton.addEventListener("click", () => {
+      trackButtonClick("retry_quiz", {
+        button_text: retryButton.textContent.trim(),
+        previous_score: score,
+        previous_total_questions: questions.length
+      });
       trackEvent("quiz_retry_click", {
         previous_score: score,
         previous_total_questions: questions.length
       });
       startQuiz("retry");
     });
-    nextButton.addEventListener("click", submitAnswer);
+    nextButton.addEventListener("click", () => {
+      trackButtonClick(nextButton.textContent.trim() === "결과 보기" ? "view_result" : "next_question", {
+        button_text: nextButton.textContent.trim()
+      });
+      submitAnswer();
+    });
     homeButton.addEventListener("click", () => {
+      trackButtonClick("close_or_home", {
+        button_text: "X"
+      });
       trackEvent("quiz_home_click", {
         screen: quizScreen.classList.contains("active") ? "quiz" : resultScreen.classList.contains("active") ? "result" : "intro",
         question_order: currentIndex + 1,
         current_score: score
       });
+      setVirtualPage("intro", "push");
       showScreen(introScreen);
       updateProgress();
     });
     eventButton.addEventListener("click", () => {
+      trackButtonClick("event_participation", {
+        button_text: eventButton.textContent.trim(),
+        score,
+        total_questions: questions.length,
+        grade_label: gradeStat.textContent
+      });
       trackEvent("result_cta_click", {
         cta_name: "event_participation",
         score,
